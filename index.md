@@ -5,8 +5,8 @@
 #define ENABLE_DEBUG
 #include <SPI.h>
 #include <MFRC522.h>
-constexpr uint8_t RST_PIN = D3;     // Configurable, see typical pin layout above
-constexpr uint8_t SS_PIN = D4;     // Configurable, see typical pin layout above
+constexpr uint8_t RST_PIN = D3;     // Configurable, see typical pin layout 
+constexpr uint8_t SS_PIN = D4;     // Configurable, see typical pin layout 
 MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
 MFRC522::MIFARE_Key key;
 String tag;
