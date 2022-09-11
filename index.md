@@ -1,526 +1,221 @@
-# Welcome to the code Documentation for the 2 week Arduino Course. 
+# Welcome to the Electric Door Code
 
-So i have listed the code documentation for all the components we will learn or have learned in the course.
-
-
-## LED / Buzzer
 
 ```c++
-void setup() {
-  // initialize digital pin LED_BUILTIN as an output.
-  pinMode(13, OUTPUT);
-}
-
-// the loop function runs over and over again forever
-void loop() {
-  digitalWrite(13, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(1000);                       // wait for a second
-  digitalWrite(13, LOW);    // turn the LED off by making the voltage LOW
-  delay(1000);                       // wait for a second
-}
-```
-
-
-# Ultrasonic Sensor
-
-### Simple distance calcutor 
-
-```c++
-const unsigned int TRIG_PIN=3;//trigger pin attached to digital pin 13
-const unsigned int ECHO_PIN=2;//echo pin attached to digital pin 12
-const unsigned int BAUD_RATE=9600;
-
-void setup() {
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
-  Serial.begin(BAUD_RATE);
-}
-
-void loop() {
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-  
-
- const unsigned long duration= pulseIn(ECHO_PIN, HIGH);
- int distance= duration/29/2;
- if(duration==0){
-   Serial.println("Warning: no pulse from sensor");
-   } 
-  else{
-      Serial.print("distance to nearest object:");
-      Serial.println(distance);
-      Serial.println(" cm");
-  }
- delay(1000);
- }
-```
-
-### Ultrasonic with LED (Wave)
-
-```c++
-const unsigned int TRIG_PIN=3;//trigger pin attached to digital pin 13
-const unsigned int ECHO_PIN=2;//echo pin attached to digital pin 12
-const unsigned int BAUD_RATE=9600;
-
-void setup() {
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
-  pinMode(13, OUTPUT);
-  Serial.begin(BAUD_RATE);
-}
-
-void loop() {
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-  
-
- const unsigned long duration= pulseIn(ECHO_PIN, HIGH);
- int distance= duration/29/2;
- if(distance<50){
-   digitalWrite(13, HIGH);    
-   } 
-  else{
-      digitalWrite(13, LOW); 
-  }
- }
- ``` 
-
-
-# Light Sensor
-
-### Simple value indicator
-
-```c++
-
-void setup() {
-  Serial.begin(9600);
-}
-
-
-void loop() {
-  int value = analogRead(A0);
-  Serial.println("Analog value : ");
-  Serial.println(value);
-  delay(250);
-}
-```
-
-### Light Sensor with LED/Buzzer
-
-```c++
-void setup() {
-  Serial.begin(9600);
-  pinMode(13, OUTPUT);
-}
-
-
-void loop() {
-  int value = analogRead(A0);
-  Serial.println("Analog value : ");
-  Serial.println(value);
-  delay(250);
-  
-  if(value<80){
-   digitalWrite(13, HIGH);    
-   } 
-  else{
-      digitalWrite(13, LOW); 
-  }
-}
-```
-
-## RFID with TAG
-
-Make sure you install MFRC522 library from Arduino IDE.
-
-### Reading data from an RFID tag
-
-After having the circuit ready, go to File > Examples > MFRC522 > DumpInfo and upload the code. This code will be available in Arduino IDE (after installing the RFID library). Run the code from the examples to find that the number of the RFID.
-
-```c++
+#define ENABLE_DEBUG
 #include <SPI.h>
 #include <MFRC522.h>
- 
-#define SS_PIN 10
-#define RST_PIN 9
-MFRC522 mfrc522(SS_PIN, RST_PIN);   // Create MFRC522 instance.
- 
-void setup() 
-{
-  Serial.begin(9600);   // Initiate a serial communication
-  SPI.begin();      // Initiate  SPI bus
-  mfrc522.PCD_Init();   // Initiate MFRC522
-  Serial.println("Approximate your card to the reader...");
-  Serial.println();
-  pinMode(5, OUTPUT);
+constexpr uint8_t RST_PIN = D3;     // Configurable, see typical pin layout above
+constexpr uint8_t SS_PIN = D4;     // Configurable, see typical pin layout above
+MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
+MFRC522::MIFARE_Key key;
+String tag;
 
-}
-void loop() 
-{
-  // Look for new cards
-  if ( ! mfrc522.PICC_IsNewCardPresent()) 
-  {
-    return;
-  }
-  // Select one of the cards
-  if ( ! mfrc522.PICC_ReadCardSerial()) 
-  {
-    return;
-  }
-  //Show UID on serial monitor
-  Serial.print("UID tag :");
-  String content= "";
-  byte letter;
-  for (byte i = 0; i < mfrc522.uid.size; i++) 
-  {
-     Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
-     Serial.print(mfrc522.uid.uidByte[i], HEX);
-     content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " "));
-     content.concat(String(mfrc522.uid.uidByte[i], HEX));
-  }
-  Serial.println();
-  Serial.print("Message : ");
-  content.toUpperCase();
-  if (content.substring(1) == "4A 92 5F 3F") //change here the UID of the card/cards that you want to give access
-  {
-    Serial.println("Authorized access");
-    Serial.println();
-    digitalWrite(5, HIGH);
-    delay(10000);
-    digitalWrite(5, LOW);
-  }
- 
- else   {
-    Serial.println(" Access denied");
-    delay(3000);
-  }
-} 
-```
+#ifdef ENABLE_DEBUG
+       #define DEBUG_ESP_PORT Serial
+       #define NODEBUG_WEBSOCKETS
+       #define NDEBUG
+#endif 
 
-## PIR Sensor.
+#include <Arduino.h>
+#ifdef ESP8266 
+       #include <ESP8266WiFi.h>
+#endif 
+#ifdef ESP32   
+       #include <WiFi.h>
+#endif
 
-```c++
-int ledPin = 13;                // LED 
-int pirPin = 4;                 // PIR Out pin 
-void setup() {
- pinMode(ledPin, OUTPUT);     
- pinMode(pirPin, INPUT);     
- Serial.begin(9600);
-}
-void loop(){
- pirStat = digitalRead(pirPin); 
- if (pirStat == HIGH) {            // if motion detected
-   digitalWrite(ledPin, HIGH);  // turn LED ON
-   Serial.println("Hey I got you!!!");
- } 
- else {
-   digitalWrite(ledPin, LOW); // turn LED OFF if we have no motion
- }
-} 
-```
+#include "SinricPro.h"
+#include "SinricProLight.h"
 
-## Humidity Sensor
 
-Make sure you install the Library Of DHT11 temperature sensor library from Arduino IDE.
+#define WIFI_SSID         "Dreamland"    
+#define WIFI_PASS         "1234567890" 
+#define APP_KEY           "a1ca9625-948c-4c16-a1df-2f9cab312aa1"      // Should look like "de0bxxxx-1x3x-4x3x-ax2x-5dabxxxxxxxx"
+#define APP_SECRET        "a380ca22-2929-4490-9c58-495341120a94-661c205d-811e-4f8e-ba73-a1583cb51b22"    // Should look like "5f36xxxx-x3x7-4x3x-xexe-e86724a9xxxx-4c4axxxx-3x3x-x5xe-x9x3-333d65xxxxxx"
+#define LIGHT_ID1         "611b9fbebab19d40581973fd" // Should look like "5dc1564130xxxxxxxxxxxxxx"
+#define LIGHT_ID2         "61853449eb3dca182822d9a8"  
+#define BAUD_RATE         250000                // Change baudrate to your need
 
-```c++
+const int light1=D2;
+const int light2=D8;
+#define pushButtonPin D0  
+#define pushButton2Pin D1
+// #define resetButtonPin D2
 
-#include "DHT.h"        // including the library of DHT11 temperature and humidity sensor
-#define DHTTYPE DHT11   // DHT 11
-#define dht_dpin 8	//data pin of DHT11 sensor attached to digital pin 8 of arduino
-DHT dht(dht_dpin, DHTTYPE); 
-void setup(){
-  Serial.begin(9600);
-  dht.begin();
+
+
+
+bool onPowerState(const String &deviceId, bool &state) {
+      
+      if(deviceId==LIGHT_ID1){
+       Serial.printf("Device %s power turned %s \r\n", deviceId.c_str(), state?"on":"off");
+      if(state){
+        digitalWrite(light1,HIGH);
+        Serial.println("RED LIGHT TURNED ON");
+      }
+      else{
+        digitalWrite(light1,LOW);
+        }
+    }
+    
+    if(deviceId==LIGHT_ID2){
+       Serial.printf("Device %s power turned %s \r\n", deviceId.c_str(), state?"on":"off");
+      if(state){
+        digitalWrite(light2,HIGH);
+        Serial.println("RED LIGHT TURNED ON");
+      }
+      else{
+        digitalWrite(light2,LOW);
+        }
+    }
+    
+  return true; // request handled properly
   
-} 
-void loop(){
-  float h = dht.readHumidity();
-  float t = dht.readTemperature(); 
-  Serial.println("Humidity and temperature\n\n");
-  Serial.print("Current humidity = ");
-  Serial.print(h);
-  Serial.print("%  ");
-  Serial.print("temperature = ");
-  Serial.print(t);
-  delay(1000);
-}
-```
-## IR Sensor
-
-```c++
-
-int IRSensor = 2; // connect ir sensor to arduino pin 2
-int LED = 13; // conect Led to arduino pin 13
-
-
-
-void setup() 
-{
-  pinMode (IRSensor, INPUT); // sensor pin INPUT
-  pinMode (LED, OUTPUT); // Led pin OUTPUT
-}
-
-void loop()
-{
-  int statusSensor = digitalRead (IRSensor);
-  
-  if (statusSensor == 1){
-    digitalWrite(LED, LOW); // LED LOW
   }
-  
-  else
-  {
-    digitalWrite(LED, HIGH); // LED High
+
+void setupWiFi() {
+  Serial.printf("\r\n[Wifi]: Connecting");
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.printf(".");
+    delay(250);
   }
-  
+  IPAddress localIP = WiFi.localIP();
+  Serial.printf("connected!\r\n[WiFi]: IP-Address is %d.%d.%d.%d\r\n", localIP[0], localIP[1], localIP[2], localIP[3]);
 }
-```
+
+void setupSinricPro() {
+  // get a new Light device from SinricPro
+  SinricProLight &myLight1 = SinricPro[LIGHT_ID1];
+  SinricProLight &myLight2 = SinricPro[LIGHT_ID2];
 
 
-## Servo Motor
+  // set callback function to RED LIGHT
+  myLight1.onPowerState(onPowerState);
+  myLight2.onPowerState(onPowerState);
 
-Make sure you install the Servo Library from Arduino IDE.
 
-```c++
-
-#include <Servo.h>
-int servoPin = 3; 	//servo motor data pin attached to digital pin 3 of arduino 
-// Create a servo object 
-Servo Servo1; 
-void setup() { 
-   // We need to attach the servo to the used pin number 
-   Servo1.attach(servoPin); 
+  // setup SinricPro
+  SinricPro.onConnected([](){ Serial.printf("Connected to SinricPro\r\n"); }); 
+  SinricPro.onDisconnected([](){ Serial.printf("Disconnected from SinricPro\r\n"); });
+  SinricPro.begin(APP_KEY, APP_SECRET);
 }
-void loop(){ 
-   // Make servo go to 0 degrees 
-   Servo1.write(0); 
-   delay(1000); 
-   // Make servo go to 90 degrees 
-   Servo1.write(90); 
-   delay(1000); 
-   // Make servo go to 180 degrees 
-   Servo1.write(180); 
-   delay(1000); 
-}
-```
 
 
-## Relay 
 
-```c++
+int buttonPushed =0;
+int buttonPushed2 =0;
+//int resetButton =0;
+
 
 void setup() {
-  // initialize digital pin LED_BUILTIN as an output.
-  pinMode(13, OUTPUT);
+   
+
+  pinMode(pushButtonPin,INPUT_PULLUP);
+  pinMode(pushButton2Pin,INPUT_PULLUP);
+  //pinMode(resetButtonPin,INPUT_PULLUP);
+   Serial.println("Welcome to Electrical Door Lock.");
+
+  SPI.begin(); // Init SPI bus
+  rfid.PCD_Init(); // Init MFRC522
+  //pinMode(1, FUNCTION_3);
+  pinMode(D2, OUTPUT);
+  pinMode(D8, OUTPUT);
+
+
+
+  Serial.begin(BAUD_RATE); Serial.printf("\r\n\r\n");
+  //pinMode(light1,OUTPUT);
+  pinMode(light2,OUTPUT);
+  setupWiFi();
+  setupSinricPro();
+
+
 }
 
-// the loop function runs over and over again forever
 void loop() {
-  digitalWrite(13, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(1000);                       // wait for a second
-  digitalWrite(13, LOW);    // turn the LED off by making the voltage LOW
-  delay(1000);                       // wait for a second
-}
-```
 
 
-## Motor Driver
+ if(digitalRead(pushButtonPin) == LOW){
+    buttonPushed = 1;
+    
+  }
 
-This is used as any other led which just inputs an digital output from the Arduino.
-
-
-## Bluetooth Module 
-
-```c++
-
-#include<SoftwareSerial.h>
-SoftwareSerial BT(10,11); //(Tx,Rx)
-String readData;
-
-void setup()
-{
-  BT.begin(9600);
-  Serial.begin(9600);
- pinMode(A0, OUTPUT);
-}
-
-void loop()
-{
-  while(BT.available())
-  {
-  delay(10);
-  char c = BT.read();
-  readData+=c;
-}
-
-if(readData.length()>0)
-{
-  Serial.println(readData);
-
-if(readData == "ON")
-{
-  analogWrite(A0, 180);
-}
-
-  
-if(readData=="OFF")
-  {
-    analogWrite(A0, 0);
+  if(digitalRead(pushButton2Pin) == LOW){
+    buttonPushed2 = 1;
+    
   }
   
-  else
-  {
-  readData="";
-}
-}
-}
-```
-
-## Final Code of the Bluetooth Controlled Car.(Android Version)
-
-
-```c++
-#include<SoftwareSerial.h>
-SoftwareSerial BT(10,11); //(Tx,Rx)
-String readData;
-void setup()
-{
-  BT.begin(9600);
-  Serial.begin(9600);
- pinMode(A0, OUTPUT);
- pinMode(A1, OUTPUT);
- pinMode(A3, OUTPUT);
- pinMode(A4, OUTPUT);
-}
-void loop()
-{
-  while(BT.available())
-  {
-  delay(10);
-  char c = BT.read();
-  readData+=c;
-}
-
-if(readData.length()>0)
-{
-  Serial.println(readData);
-  if(readData=="Front")
-  {
-    analogWrite(A0, 180);
-    analogWrite(A1, 0);
-    analogWrite(A3, 0);
-    analogWrite(A4, 180);
-  }
-
-  if(readData=="Back")
-  {
-    analogWrite(A0, 0);
-    analogWrite(A1, 180);
-    analogWrite(A3, 180);
-    analogWrite(A4, 0);
-  }
   
-  if(readData=="Right")
-  {
-    analogWrite(A0, 0);
-    analogWrite(A1, 180);
-    analogWrite(A3, 0);
-    analogWrite(A4, 180);
-  }
-  if(readData=="Left")
-  {
-    analogWrite(A0, 180);
-    analogWrite(A1, 0);
-    analogWrite(A3, 180);
-    analogWrite(A4, 0);
-  }
+//  if(digitalRead(resetButtonPin) == LOW){
+//    resetButton = 1;
+//    
+//  }
+
+
+
+if( buttonPushed ){
+         
+         
+         
+         Serial.println("alexa mode on");
+  delay(100);
+  SinricPro.handle();
+
    
-  if(readData=="OFF")
-  {
-    analogWrite(A0, 0);
-    analogWrite(A1, 0);
-    analogWrite(A3, 0);
-    analogWrite(A4, 0);
   }
-    else
-  {
-    digitalWrite(13 ,LOW);
-  readData="";
+
+
+if(buttonPushed2){
+
+            Serial.println("nfc mode on");
+            delay(500);
+if ( ! rfid.PICC_IsNewCardPresent())
+    return;
+  if (rfid.PICC_ReadCardSerial()) {
+    for (byte i = 0; i < 4; i++) {
+      tag += rfid.uid.uidByte[i];
+    }
+
+    
+    Serial.println(tag);
+    if (tag == "741469563" ) {
+      Serial.println("Access Granted!");
+      digitalWrite(D2, HIGH);
+      delay(4000);
+      digitalWrite(D2, LOW);
+     
+    } else {
+      Serial.println("Access Denied!");
+      digitalWrite(D8, HIGH);
+      delay(4000);
+      digitalWrite(D8, LOW);
+    }
+
+    
+    tag = "";
+    rfid.PICC_HaltA();
+    rfid.PCD_StopCrypto1();
+  }
+  }
+
+//   if(resetButton){
+//
+//        Serial.println("Reseted");
+//
+// 
+//    buttonPushed = 0;
+//    buttonPushed2 = 0;
+//    resetButton = 0;
+//
+// 
+//  
+//    }
+
+
 }
-}
-}
-```
-
-## Final Code of the Bluetooth Controlled Car.(MAC Version)
-
-
-```c++
-char val ;  // Please remember to connect the TX pin of the bluetooth module with the RX pin of the arduino and vice-visa.
-
-void setup(){
-  pinMode(A0, OUTPUT);
-  pinMode(A1, OUTPUT);
-  pinMode(A3, OUTPUT);
-  pinMode(A4, OUTPUT);
-  Serial.begin(9600);
-
-}
-
-void loop(){
-  if ( Serial.available())
-  {
-    val = Serial.read();
-   }
-
-   if(val=='s')
-  {
-    analogWrite(A0, 180);
-    analogWrite(A1, 0);
-    analogWrite(A3, 0);
-    analogWrite(A4, 180);
-  }
-
-  if(val=='w')
-  {
-    analogWrite(A0, 0);
-    analogWrite(A1, 180);
-    analogWrite(A3, 180);
-    analogWrite(A4, 0);
-  }
-  
-  if(val=='a')
-  {
-    analogWrite(A0, 0);
-    analogWrite(A1, 180);
-    analogWrite(A3, 0);
-    analogWrite(A4, 180);
-  }
-  if(val=='d')
-  {
-    analogWrite(A0, 180);
-    analogWrite(A1, 0);
-    analogWrite(A3, 180);
-    analogWrite(A4, 0);
-  }
-   
-  if(val=='q')
-  {
-    analogWrite(A0, 0);
-    analogWrite(A1, 0);
-    analogWrite(A3, 0);
-    analogWrite(A4, 0);
-  }
-
-  else{
-  }
-  }
   ```
 
 
